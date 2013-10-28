@@ -52,12 +52,12 @@ import java.util.List;
  */
 public class AnalyzerFactory {
     private static final Logger LOG = LoggerFactory.getLogger(AnalyzerFactory.class);
-    private List<Repository> repositories;
+    private List<Repository> repositories = Lists.newArrayList();
     private List<String> artifacts;
     // note: caller is free to change these between obtaining analyzers!
     private ComponentSpec tokenizerSpec;
-    private List<ComponentSpec> charFilterSpecs;
-    private List<ComponentSpec> tokenFilterSpecs;
+    private List<ComponentSpec> charFilterSpecs = Lists.newArrayList();
+    private List<ComponentSpec> tokenFilterSpecs = Lists.newArrayList();
 
     public Analyzer newAnalyzer() {
         final TokenizerFactory tokenizerFactory = TokenizerFactory.forName(tokenizerSpec.getName(), tokenizerSpec.getOptions());
@@ -72,7 +72,7 @@ public class AnalyzerFactory {
             charFilterFactories.add(charFilterFactory);
         }
 
-       return new Analyzer() {
+        return new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName, Reader reader) {
                 for (CharFilterFactory charFilterFactory : charFilterFactories) {
@@ -114,35 +114,38 @@ public class AnalyzerFactory {
          */
         mirrorSelector = mirrorSelector.add("Nexus", "http://maven.basistech.net/nexus/content/groups/public", null, true, "*,!apache.org,!sonar,!apache.snapshots", null);
         session.setMirrorSelector(mirrorSelector);
-
-        Artifact artifact = new DefaultArtifact("org.apache.maven:maven-aether-provider:3.1.0");
-
-        CollectRequest collectRequest = new CollectRequest();
-        RemoteRepository repo = AetherBooter.newCentralRepository();
-        collectRequest.addRepository(repo);
-        for (Repository repoSpec : repositories) {
-            collectRequest.addRepository(new RemoteRepository.Builder(repoSpec.getId(), "default", repoSpec.getUrl()).build());
-        }
-
-        DependencyFilter classpathFilter = DependencyFilterUtils.classpathFilter(JavaScopes.RUNTIME);
-        collectRequest.setRoot(new Dependency(artifact, JavaScopes.RUNTIME));
-
-        DependencyRequest dependencyRequest = new DependencyRequest(collectRequest, classpathFilter);
-
-        List<ArtifactResult> artifactResults = null;
-        try {
-            artifactResults = system.resolveDependencies(session, dependencyRequest).getArtifactResults();
-        } catch (DependencyResolutionException e) {
-            throw new RuntimeException(e);
-        }
-
         List<URL> analyzerJars = Lists.newArrayList();
 
-        for (ArtifactResult artifactResult : artifactResults) {
+        for (String artifactSpec : artifacts) {
+            LOG.info("Collecting jars for {}", artifactSpec);
+            Artifact artifact = new DefaultArtifact(artifactSpec);
+
+            CollectRequest collectRequest = new CollectRequest();
+            RemoteRepository repo = AetherBooter.newCentralRepository();
+            collectRequest.addRepository(repo);
+            for (Repository repoSpec : repositories) {
+                collectRequest.addRepository(new RemoteRepository.Builder(repoSpec.getId(), "default", repoSpec.getUrl()).build());
+            }
+
+            DependencyFilter classpathFilter = DependencyFilterUtils.classpathFilter(JavaScopes.RUNTIME);
+            collectRequest.setRoot(new Dependency(artifact, JavaScopes.RUNTIME));
+
+            DependencyRequest dependencyRequest = new DependencyRequest(collectRequest, classpathFilter);
+
+            List<ArtifactResult> artifactResults = null;
             try {
-                analyzerJars.add(artifactResult.getArtifact().getFile().toURI().toURL());
-            } catch (MalformedURLException e) {
+                artifactResults = system.resolveDependencies(session, dependencyRequest).getArtifactResults();
+            } catch (DependencyResolutionException e) {
                 throw new RuntimeException(e);
+            }
+
+
+            for (ArtifactResult artifactResult : artifactResults) {
+                try {
+                    analyzerJars.add(artifactResult.getArtifact().getFile().toURI().toURL());
+                } catch (MalformedURLException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
         return analyzerJars;

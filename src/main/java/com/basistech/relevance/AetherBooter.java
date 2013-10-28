@@ -53,7 +53,7 @@ final class AetherBooter {
             public void serviceCreationFailed(Class<?> type, Class<?> impl, Throwable exception) {
                 throw new RuntimeException(exception);
             }
-        } );
+        });
 
         return locator.getService(RepositorySystem.class);
     }
@@ -64,7 +64,7 @@ final class AetherBooter {
         String home = System.getProperty("user.home");
 
         LocalRepository localRepo = new LocalRepository(home + "/m2/repository");
-        session.setLocalRepositoryManager(system.newLocalRepositoryManager(session, localRepo ));
+        session.setLocalRepositoryManager(system.newLocalRepositoryManager(session, localRepo));
 
         session.setTransferListener(new AbstractTransferListener() {
             @Override
