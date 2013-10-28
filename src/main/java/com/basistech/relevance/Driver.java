@@ -37,7 +37,7 @@ import java.util.Map;
  * Command line to AnalyzerFactory experiments
  */
 public final class Driver {
-    private String artifactSpec;
+    private List<String> artifactSpecs = Lists.newArrayList();
     private List<ComponentSpec> charFilterSpecs = Lists.newArrayList();
     private ComponentSpec tokenizerSpec;
     private List<ComponentSpec> tokenFilterSpecs = Lists.newArrayList();
@@ -92,7 +92,7 @@ public final class Driver {
 
     private void setupFactory() {
         analyzerFactory = new AnalyzerFactory();
-        analyzerFactory.setArtifacts(Lists.newArrayList(artifactSpec));
+        analyzerFactory.setArtifacts(artifactSpecs);
         analyzerFactory.setCharFilterSpecs(charFilterSpecs);
         analyzerFactory.setTokenFilterSpecs(tokenFilterSpecs);
         analyzerFactory.setTokenizerSpec(tokenizerSpec);
@@ -114,7 +114,7 @@ public final class Driver {
     private void requireAnotherArg(int argx, String[] args) {
         if (argx == args.length - 1) {
             System.err.println("Missing argument");
-            System.err.println("Usage: Driver group:artifact:version [-charfilter charfilter opt=val opt=val -char ... ] -tokenizer tokenizer opt=val opt=val ... [-tokenfilter tokenfilters ...]");
+            System.err.println("Usage: Driver group:artifact:version ... group:artifact:version [-charfilter charfilter opt=val opt=val -char ... ] -tokenizer tokenizer opt=val opt=val ... [-tokenfilter tokenfilters ...]");
             System.exit(1);
         }
     }
@@ -122,8 +122,11 @@ public final class Driver {
     private void parseArgs(String[] args) {
         inputFile = args[0];
         outputFile = args[1];
-        artifactSpec = args[2];
-        for (int argx = 3; argx < args.length; argx++) {
+        int argx = 2;
+        while (argx < args.length && args[argx].charAt(0) != '-') {
+            artifactSpecs.add(args[argx++]);
+        }
+        for (; argx < args.length; argx++) {
             String arg = args[argx];
             if ("-charfilter".equals(arg)) {
                 closeOutCurrent();
@@ -142,12 +145,12 @@ public final class Driver {
             } else if (currentTokenFilterSpec != null) {
                 addOption(currentTokenFilterSpec.getOptions(), arg);
             } else if ("-tokenizer".equals(arg)) {
+                closeOutCurrent();
+                requireAnotherArg(argx, args);
                 if (tokenizerSpec != null) {
                     System.err.println("Only one tokenizer.");
                     System.exit(1);
                 }
-                closeOutCurrent();
-                requireAnotherArg(argx, args);
                 arg = args[++argx];
                 tokenizerSpec = new ComponentSpec(arg, new HashMap<String, String>());
                 inTokenizerSpec = true;

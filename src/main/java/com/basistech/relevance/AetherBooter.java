@@ -63,7 +63,7 @@ final class AetherBooter {
         DefaultRepositorySystemSession session = MavenRepositorySystemUtils.newSession();
         String home = System.getProperty("user.home");
 
-        LocalRepository localRepo = new LocalRepository(home + "/m2/repository");
+        LocalRepository localRepo = new LocalRepository(home + "/.m2/repository");
         session.setLocalRepositoryManager(system.newLocalRepositoryManager(session, localRepo));
 
         session.setTransferListener(new AbstractTransferListener() {

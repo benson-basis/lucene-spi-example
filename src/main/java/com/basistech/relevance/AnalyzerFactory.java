@@ -127,12 +127,12 @@ public class AnalyzerFactory {
                 collectRequest.addRepository(new RemoteRepository.Builder(repoSpec.getId(), "default", repoSpec.getUrl()).build());
             }
 
-            DependencyFilter classpathFilter = DependencyFilterUtils.classpathFilter(JavaScopes.RUNTIME);
-            collectRequest.setRoot(new Dependency(artifact, JavaScopes.RUNTIME));
+            DependencyFilter classpathFilter = DependencyFilterUtils.classpathFilter(JavaScopes.RUNTIME, JavaScopes.COMPILE);
+            collectRequest.setRoot(new Dependency(artifact, JavaScopes.COMPILE));
 
             DependencyRequest dependencyRequest = new DependencyRequest(collectRequest, classpathFilter);
 
-            List<ArtifactResult> artifactResults = null;
+            List<ArtifactResult> artifactResults;
             try {
                 artifactResults = system.resolveDependencies(session, dependencyRequest).getArtifactResults();
             } catch (DependencyResolutionException e) {
@@ -141,6 +141,7 @@ public class AnalyzerFactory {
 
 
             for (ArtifactResult artifactResult : artifactResults) {
+                LOG.info("Collecting {}", artifactResult.getArtifact().getFile().getAbsolutePath());
                 try {
                     analyzerJars.add(artifactResult.getArtifact().getFile().toURI().toURL());
                 } catch (MalformedURLException e) {
